@@ -60,6 +60,18 @@ function microphoneErrorMessage(error) {
   return "Browser recording could not start. Allow microphone access or upload an audio file instead.";
 }
 
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      "Server returned a non-JSON response. Make sure the Flask backend is running on http://127.0.0.1:5000 and DATABASE_URL uses the active MySQL port."
+    );
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("submit");
   const [form, setForm] = useState(emptyForm);
@@ -84,8 +96,9 @@ export default function App() {
     setError("");
     try {
       const response = await fetch("/api/submissions");
-      if (!response.ok) throw new Error("Could not load submissions.");
-      setSubmissions(await response.json());
+      const payload = await readJsonResponse(response);
+      if (!response.ok) throw new Error(payload.error || "Could not load submissions.");
+      setSubmissions(payload);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -181,7 +194,7 @@ export default function App() {
       body.append("phone", form.phone);
       body.append("audio", audioFile, audioFile.name);
       const response = await fetch("/api/submissions", { method: "POST", body });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       if (!response.ok) throw new Error(payload.error || "Submission failed.");
       setStatus("Submission stored");
       setForm(emptyForm);
@@ -204,7 +217,7 @@ export default function App() {
     setStatus("");
     try {
       const response = await fetch(`/api/submissions/${item.id}`, { method: "DELETE" });
-      const payload = await response.json().catch(() => ({}));
+      const payload = await readJsonResponse(response);
       if (!response.ok) throw new Error(payload.error || "Could not delete submission.");
       setSubmissions((current) => current.filter((submission) => submission.id !== item.id));
       setStatus("Submission deleted");
