@@ -2,43 +2,46 @@
 
 ## Status
 
-Task 2 workflow JSON will be added manually by the author.
-
-The current `workflow.json` file is only a placeholder and is not a working n8n export.
+Task 2 is complete. The exported n8n workflow is committed at `task2-n8n/workflow.json`.
 
 ## Requirement
 
 Build one no-code/low-code automation using n8n, Make, or Zapier and export the workflow JSON into this repository.
 
-## Planned Automation
+## Workflow Overview
 
-The intended automation is a duplicate-check workflow:
+The workflow is named `ConsultBae - CSV Deduplication + Alerts`.
 
-- Trigger: a new CSV file or new row is submitted.
-- Input: person name, email if available, phone if available, city, and skills.
-- Processing: normalize identifiers in the same spirit as Task 1.
-- Database interaction: query the unified database for exact email or exact phone matches.
-- Output: create a duplicate alert when a likely existing person is found; otherwise allow the row to continue for review/import.
+- Trigger: `Webhook - CSV Upload3` receives a POST request with a CSV file.
+- File handling: `Prepare CSV Binary3` normalizes the binary input name and `Extract CSV3` parses the CSV with a header row.
+- Existing data lookup: `Read Existing Rows` reads the configured Google Sheet.
+- Duplicate detection: `Detect Duplicates` normalizes email values and phone digits, then flags rows already present in the sheet.
+- Duplicate branch: `Duplicate Found?2` routes duplicate records to a Gmail alert node.
+- New-candidate branch: `Summarize Candidate` uses OpenAI to generate a concise recruiter summary.
+- Output: `Merge Summary Into Row` adds the generated summary, then `Write Results to Sheet` appends the row to Google Sheets.
 
-## Expected Files
+## Files
 
-- `task2-n8n/workflow.json`: real exported n8n workflow JSON after manual upload.
+- `task2-n8n/workflow.json`: exported n8n workflow JSON.
 - `task2-n8n/screenshots/`: optional screenshots of the workflow canvas and test run.
 
 ## Import Steps
 
 1. Open n8n.
 2. Choose **Import from File**.
-3. Select `task2-n8n/workflow.json` after the placeholder has been replaced.
-4. Configure credentials for the database and any file source.
-5. Run a test execution and add screenshots if required.
+3. Select `task2-n8n/workflow.json`.
+4. Reconnect credentials for Google Sheets, Gmail, and OpenAI in your own n8n workspace.
+5. Confirm the target Google Sheet and duplicate alert email are correct.
+6. Run a test execution with a CSV that includes `Full Name`, `Email`, `Phone`, `City`, `Experience (Years)`, `Current CTC`, `Applied Date`, and `Skills` columns.
 
 ## Required Configuration
 
-The workflow should use environment variables or n8n credentials instead of hardcoded secrets:
+The committed export does not include OAuth tokens, API keys, or execution data. After importing, configure these values in n8n:
 
-- `DATABASE_URL` or separate MySQL host/user/password/database credentials.
-- CSV source credential if the trigger reads from a cloud drive or webhook.
-- Optional notification destination if duplicate alerts are sent to email/Slack.
+- Google Sheets OAuth credential for reading and appending applicant rows.
+- Gmail OAuth credential for duplicate alerts.
+- OpenAI credential for candidate summary generation.
+- Target Google Sheet used by `Read Existing Rows` and `Write Results to Sheet`.
+- Recipient email address used by the duplicate alert node.
 
-Do not commit real n8n credentials or execution data.
+Do not commit real OAuth tokens, API keys, or n8n execution data.

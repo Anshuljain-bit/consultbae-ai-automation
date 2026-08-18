@@ -1,4 +1,462 @@
 {
-  "status": "pending_manual_upload",
-  "message": "Task 2 workflow JSON will be added manually by the author. Replace this placeholder with the real n8n export before marking Task 2 complete."
+  "name": "ConsultBae - CSV Deduplication + Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "consultbae-ai-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c7ddcbaa-4518-4fac-b4b0-ec35f760496f",
+      "name": "Webhook - CSV Upload3",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1680,
+        2448
+      ],
+      "webhookId": "46a68220-a285-4fbf-a689-750ff5b63581"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\nif (!item.binary?.file && !item.binary?.data) {\n  throw new Error('No CSV file found. Expected binary property file or data.');\n}\n\nif (item.binary.file && !item.binary.data) {\n  item.binary.data = item.binary.file;\n}\n\nreturn item;"
+      },
+      "id": "0ae7c0b0-dc03-4c68-82bf-2451e4c00e95",
+      "name": "Prepare CSV Binary3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "8a4fd6d2-55b8-47a0-aaa2-79b87ecfc2b7",
+      "name": "Extract CSV3",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1BfDkfhD5nS-UGK8qnyYhLcx7s_B0NDdOic2MHeXY5jc/edit?usp=sharing"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BfDkfhD5nS-UGK8qnyYhLcx7s_B0NDdOic2MHeXY5jc/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "1b94aca1-31fa-4e76-a351-44edd8bc75d4",
+      "name": "Read Existing Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1008,
+        2448
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DWyimgqupLg7yMHD",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const norm = (s) => String(s || '').trim().toLowerCase();\nconst phoneKey = (s) => { const d = String(s || '').replace(/\\D/g, ''); return d.length >= 10 ? d.slice(-10) : d; };\n\nconst existing = $('Read Existing Rows').all()\n  .map(i => i.json)\n  .filter(r => r && Object.keys(r).length > 0);\n\nconst emails = new Set(existing.map(r => norm(r.Email)).filter(Boolean));\nconst phones = new Set(existing.map(r => phoneKey(r.Phone)).filter(Boolean));\n\nconst rows = $('Extract CSV3').all().map(i => i.json);\n\nreturn rows.map(r => {\n  const email = norm(r.Email);\n  const phone = phoneKey(r.Phone);\n  const is_duplicate = (!!email && emails.has(email)) || (!!phone && phones.has(phone));\n  return { json: { ...r, is_duplicate } };\n});"
+      },
+      "id": "f54f99f3-eb1d-495f-83b5-a0459939dde3",
+      "name": "Detect Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        2448
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_duplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dd11cbf5-e26f-41ce-9703-e274caa86aaf",
+      "name": "Duplicate Found?2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "anshuljain71103@gmail.com",
+        "subject": "Duplicate candidate detected",
+        "message": "=Duplicate candidate (already in sheet):\n\nName: {{ $json[\"Full Name\"] }}\nEmail: {{ $json.Email }}\nPhone: {{ $json.Phone }}",
+        "options": {}
+      },
+      "id": "50c5ecbd-3a69-4bc9-99e1-43e9163d4df8",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        2304
+      ],
+      "webhookId": "ef5c1a5d-720e-4a50-a0ec-904c422cff64",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "OtVsHPQjYBpjsmJK",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "You are an AI Applicant Summary Agent for ConsultBae. You will receive ONE applicant record as JSON.\n\nWrite a concise, recruiter-friendly summary (50-100 words) based ONLY on the fields provided. Mention key strengths first (skills, experience, location). Do not invent or assume missing information. Do not make hiring decisions based on protected characteristics.\n\nOUTPUT: Return ONLY the plain-text summary. No markdown, no JSON, no extra commentary."
+        }
+      },
+      "id": "630c50b3-b1a9-4548-9777-b270b94c3aa1",
+      "name": "Summarize Candidate",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -336,
+        2608
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "21bad63f-31be-4d33-87b0-18c2bff35731",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        2848
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "PafRg4wXDFW3LMQ6",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputs = $input.all();\nconst rows = $('Detect Duplicates').all()\n  .map(i => i.json)\n  .filter(r => r && Object.keys(r).length > 0 && r.is_duplicate !== true);\n\nreturn outputs.map((o, idx) => {\n  const row = { ...(rows[idx] || {}) };\n  delete row.is_duplicate;\n  row['Summary '] = String(o.json.output || o.json.text || '').trim();\n  return { json: row };\n});"
+      },
+      "id": "fab38bcc-83bd-4ce9-a252-efef12129647",
+      "name": "Merge Summary Into Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        2608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1BfDkfhD5nS-UGK8qnyYhLcx7s_B0NDdOic2MHeXY5jc/edit?usp=sharing"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BfDkfhD5nS-UGK8qnyYhLcx7s_B0NDdOic2MHeXY5jc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Experience (Years)",
+              "displayName": "Experience (Years)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Current CTC",
+              "displayName": "Current CTC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Summary ",
+              "displayName": "Summary ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "6694a5ac-2049-43f2-bac4-9e94f1241b9a",
+      "name": "Write Results to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        2608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DWyimgqupLg7yMHD",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - CSV Upload3": {
+      "main": [
+        [
+          {
+            "node": "Prepare CSV Binary3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare CSV Binary3": {
+      "main": [
+        [
+          {
+            "node": "Extract CSV3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CSV3": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Rows": {
+      "main": [
+        [
+          {
+            "node": "Detect Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Found?2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Found?2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Candidate": {
+      "main": [
+        [
+          {
+            "node": "Merge Summary Into Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize Candidate",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Summary Into Row": {
+      "main": [
+        [
+          {
+            "node": "Write Results to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "20e95b70-3431-419d-b502-9b2c11dadbc5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9bcf4bf76fd48e18027826402f9e73dc508bb89bc6c618382603e4c2f8c6b2cd"
+  },
+  "nodeGroups": [],
+  "id": "37jAIF1YfXotHyqc",
+  "tags": []
 }

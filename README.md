@@ -4,7 +4,7 @@
 
 ConsultBae operates multiple systems with overlapping people data. This project merges three messy CSV sources into one canonical people database, documents the data-quality issues, and provides a mini audio intake application that stores worker submissions and extracts audio metadata.
 
-Task 2 is intentionally left as a manual n8n workflow upload location. The workflow JSON has not been fabricated.
+Task 2 includes an exported n8n workflow that accepts a CSV upload, checks incoming candidates against an existing Google Sheet by normalized email or phone, sends duplicate alerts, summarizes new candidates with OpenAI, and appends accepted rows back to the sheet.
 
 ## Problem Statement
 
@@ -38,10 +38,10 @@ Unified MySQL Database
   +----------------------+----------------------+
                          |                      |
                          v                      v
-                  n8n Workflow Slot       Audio Intake App
+                  n8n Dedup Workflow      Audio Intake App
                          |                      |
                          v                      v
-                  Manual JSON Upload      Audio Metadata
+                  Alerts + Sheet Rows     Audio Metadata
                                                 |
                                                 v
                                          Submissions Table
@@ -64,7 +64,9 @@ The implementation avoids broad fuzzy matching because the supplied data include
 
 ### Task 2 - n8n Automation
 
-Task 2 is documented in `task2-n8n/`. The workflow JSON will be added manually by the author at `task2-n8n/workflow.json`. The current file is a placeholder that clearly marks the workflow as pending.
+Task 2 is documented in `task2-n8n/`. The exported workflow is committed at `task2-n8n/workflow.json`.
+
+The workflow exposes a webhook for CSV upload, extracts rows from the uploaded file, reads the existing applicant sheet, flags duplicate candidates by normalized email or phone, sends a duplicate notification through Gmail, generates an OpenAI recruiter summary for non-duplicates, and appends accepted rows to Google Sheets.
 
 ### Task 3 - Audio Collection App
 
@@ -113,7 +115,7 @@ The optional scalability analysis is `task5-scalability/scalability_plan.md`. It
 |   `-- sql/schema.sql
 |-- task2-n8n/
 |   |-- README.md
-|   |-- workflow.json         # Pending manual replacement
+|   |-- workflow.json         # Exported n8n workflow
 |   `-- screenshots/
 |-- task3-audio-app/
 |   `-- README.md
@@ -200,7 +202,7 @@ npm run dev
 python -m unittest discover -s tests
 ```
 
-To import Task 2 later, replace `task2-n8n/workflow.json` with the exported n8n JSON and import it from the n8n editor.
+To import Task 2, load `task2-n8n/workflow.json` from the n8n editor and reconnect Google Sheets, Gmail, and OpenAI credentials in your own n8n workspace.
 
 ## Database Schema
 
@@ -244,7 +246,6 @@ The datasets include missing shared IDs, mixed phone formats, city aliases, uppe
 
 ## Known Limitations
 
-- Task 2 is pending until the author adds the real n8n export.
 - The demo app stores audio on local disk; production should use object storage.
 - Audio metadata extraction depends on FFmpeg for WebM, MP3, and M4A.
 - Duplicate audio submissions are not campaign-scoped because the current schema has no campaign/task table.
@@ -261,12 +262,12 @@ See `task5-scalability/scalability_plan.md` for the optional weekend launch anal
 ## Demo
 
 - Screen recording: `[Video link will be added]`
-- n8n workflow: `[Task 2 workflow will be added manually]`
+- n8n workflow: `task2-n8n/workflow.json`
 
 ## Assignment Checklist
 
 - [x] Task 1 completed
-- [ ] Task 2 n8n workflow added
+- [x] Task 2 n8n workflow added
 - [x] Task 3 completed
 - [x] Task 4 completed
 - [x] Task 5 completed
