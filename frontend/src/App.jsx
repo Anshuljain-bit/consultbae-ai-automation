@@ -97,7 +97,9 @@ export default function App() {
     try {
       const response = await fetch("/api/submissions");
       const payload = await readJsonResponse(response);
-      if (!response.ok) throw new Error(payload.error || "Could not load submissions.");
+      if (!response.ok) {
+        throw new Error(payload.error || `Could not load submissions. Backend returned HTTP ${response.status}.`);
+      }
       setSubmissions(payload);
     } catch (err) {
       setError(err.message);
@@ -195,7 +197,12 @@ export default function App() {
       body.append("audio", audioFile, audioFile.name);
       const response = await fetch("/api/submissions", { method: "POST", body });
       const payload = await readJsonResponse(response);
-      if (!response.ok) throw new Error(payload.error || "Submission failed.");
+      if (!response.ok) {
+        throw new Error(
+          payload.error ||
+            `Submission failed with HTTP ${response.status}. Make sure Flask is running at http://127.0.0.1:5000.`
+        );
+      }
       setStatus("Submission stored");
       setForm(emptyForm);
       setAudioFile(null);
@@ -218,7 +225,9 @@ export default function App() {
     try {
       const response = await fetch(`/api/submissions/${item.id}`, { method: "DELETE" });
       const payload = await readJsonResponse(response);
-      if (!response.ok) throw new Error(payload.error || "Could not delete submission.");
+      if (!response.ok) {
+        throw new Error(payload.error || `Could not delete submission. Backend returned HTTP ${response.status}.`);
+      }
       setSubmissions((current) => current.filter((submission) => submission.id !== item.id));
       setStatus("Submission deleted");
     } catch (err) {
