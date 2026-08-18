@@ -261,17 +261,5 @@ See `task5-scalability/scalability_plan.md` for the optional weekend launch anal
 
 ## Demo
 
-- Screen recording: `[Video link will be added]`
+- Screen recording: `https://drive.google.com/file/d/1QExB2aPzaU67Oo1IZ3d7_0P0B4eX15-G/view?usp=sharing`
 - n8n workflow: `task2-n8n/workflow.json`
-
-## Assignment Checklist
-
-- [x] Task 1 completed
-- [x] Task 2 n8n workflow added
-- [x] Task 3 completed
-- [x] Task 4 completed
-- [x] Task 5 completed
-- [x] README completed
-- [ ] Stuck log completed by author
-- [ ] Demo video recorded
-- [ ] Final repository reviewed by author
